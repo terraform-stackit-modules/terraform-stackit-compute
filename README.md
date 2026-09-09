@@ -4,75 +4,94 @@
 > Do not edit it manually — update `.header.md` or the module's variables/outputs instead, then run `pre-commit run -a`.
 
 <!-- BEGIN_TF_DOCS -->
-# Creating modules for Terraform Stackit Modules
-This repo template is used to seed Terraform Module templates for the Terraform Stackit Modules Organization. Usage of this template is allowed per included license. PRs to this template will be considered but are not guaranteed to be included. Consider creating an issue to discuss a feature you want to include before taking the time to create a PR.
+# Terraform STACKIT Compute module
 
-This repository is not from StackIt official organization
+Terraform module which provisions a [STACKIT server (VM)](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) and its directly-attached resources on [STACKIT](https://www.stackit.de/en/): SSH key pair, network interfaces, public IPs and data-volume attachments.
 
-<!-- TEMPLATE ONLY - Remove this section when using this template for a new module -->
-## Acknowledgements
+This repository is not from the official STACKIT organization.
 
-This template is inspired by two reference implementations in the Terraform ecosystem:
+## Usage
 
-- [terraform-aws-modules](https://github.com/terraform-aws-modules) by [Anton Babenko](https://github.com/antonbabenko) — the community standard for Terraform modules on AWS
-- [terraform-repo-template](https://github.com/aws-ia/terraform-repo-template) by [AWS Integration & Automation](https://github.com/aws-ia) — the AWS official modules organization
-<!-- END TEMPLATE ONLY -->
+```hcl
+module "compute" {
+  source  = "terraform-stackit-modules/compute/stackit"
+  version = ">= 1.0.0"
+
+  project_id        = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  name              = "app-server"
+  machine_type      = "g1a.1d"
+  availability_zone = "eu01-1"
+
+  boot_volume = {
+    source_type = "image"
+    source_id   = "012d2f5b-ee00-4700-9bea-cdabf0e1bfa8" # an Ubuntu image ID
+    size        = 8
+  }
+
+  create_key_pair = true
+  public_key      = file("~/.ssh/id_ed25519.pub")
+
+  # Create a network interface on an existing network and attach it to the server.
+  network_interfaces = {
+    primary = {
+      network_id         = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      name               = "app-server-nic"
+      security_group_ids = ["xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"]
+    }
+  }
+
+  user_data = <<-EOT
+    #cloud-config
+    package_update: true
+  EOT
+}
+```
+
+See [`examples/basic`](./examples/basic) for a self-contained example that stands up a network
+(via the `terraform-stackit-network` module) and a security group, then boots a server on it.
+
+## Composition
+
+- Provide your own key pair with `terraform-stackit-key-pair` and pass its name via
+  `keypair_name`, **or** let this module create one with `create_key_pair = true` + `public_key`.
+- The module can create network interfaces for you (`network_interfaces`) and/or attach
+  pre-existing ones (`network_interface_ids`); the server attaches the union of both.
+
+## Notes
+
+- `boot_volume.size` is required when `source_type = "image"`.
+- A server effectively needs at least one network interface to be reachable — provide one via
+  `network_interfaces` (created here) or `network_interface_ids` (existing).
+- Only the **public** SSH key is an input — never commit a private key.
+- **Benign provider warning.** During `apply` the STACKIT provider may print
+  `Warning: No network interfaces configured` on the server resource, even when interfaces
+  are attached. This is a known artifact of the provider: `network_interfaces` on
+  `stackit_server` is still marked optional pending a migration path, so the check fires
+  although the interface is in fact attached (the created NIC is wired to the server). It is
+  safe to ignore — the server comes up with its interface.
 
 <!-- markdownlint-disable MD001 -->
-### TL;DR
+### Contributing
 
-1. [install pre-commit](https://pre-commit.com/#install)
-    - Prerequisites:
-        - [Python](https://docs.python.org/3/using/index.html)
-        - [Pip](https://pip.pypa.io/en/stable/installation/)
-2. configure pre-commit: `pre-commit install`
-3. install required tools
-    - [tflint](https://github.com/terraform-linters/tflint)
-    - [tfsec](https://aquasecurity.github.io/tfsec/v1.0.11/)
-    - [terraform-docs](https://github.com/terraform-docs/terraform-docs)
-    - [golang](https://go.dev/doc/install) (for macos you can use `brew`)
-    - [coreutils](https://www.gnu.org/software/coreutils/)
+This module follows the conventions of the `terraform-stackit-modules` organization. Before opening a PR:
 
-Code convention to be defined.
+1. [Install pre-commit](https://pre-commit.com/#install) and run `pre-commit install`.
+2. Install the required tools: [tflint](https://github.com/terraform-linters/tflint), [tfsec](https://aquasecurity.github.io/tfsec/), [terraform-docs](https://github.com/terraform-docs/terraform-docs), [golang](https://go.dev/doc/install), [coreutils](https://www.gnu.org/software/coreutils/).
+3. Run the checks: `pre-commit run -a`.
 
-## Module Documentation
-
-**Do not manually update README.md**. README.md is automatically generated by pulling in content from other files. For instructions, including a fill-in-the-blank content template.
+**Do not manually edit `README.md`** — it is generated by `terraform-docs` from this file and the module's inputs/outputs.
 
 ## Terratest
 
-Please include tests to validate your examples/<> root modules, at a minimum. This can be accomplished with usually only slight modifications to the [boilerplate test provided in this template](./test/examples\_basic\_test.go)
+The `test/` directory holds a Terratest integration test that applies the `examples/basic` root module against a real STACKIT project (requires `STACKIT_SERVICE_ACCOUNT_KEY` and `STACKIT_PROJECT_ID`).
 
-### Configure and run Terratest
-
-1. Install
-
-    [golang](https://go.dev/doc/install) (for macos you can use `brew`)
-2. Change directory into the test folder.
-
-    `cd test`
-3. Initialize your test
-
-    go mod init github.com/[github org]/[repository]
-
-    `go mod init github.com/terraform-stackit-modules/terraform-stackit-network`
-4. Run tidy
-
-    `go mod tidy`
-5. Install Terratest
-
-    `go get github.com/gruntwork-io/terratest/modules/terraform`
-6. Run test (You can have multiple test files).
-    - Run all tests
-
-        `go test`
-    - Run a specific test with a timeout
-
-        `go test -run TestExamplesBasic -timeout 45m`
-
-## Module Standards
-
-To be defined
+```bash
+cd test
+go mod init github.com/terraform-stackit-modules/terraform-stackit-compute
+go get github.com/gruntwork-io/terratest@v1.0.1
+go mod tidy
+go test -v -timeout 45m ./...
+```
 
 ## Requirements
 
@@ -83,7 +102,9 @@ To be defined
 
 ## Providers
 
-No providers.
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_stackit"></a> [stackit](#provider\_stackit) | >= 0.113.0 |
 
 ## Modules
 
@@ -91,13 +112,49 @@ No modules.
 
 ## Resources
 
-No resources.
+| Name | Type |
+| ---- | ---- |
+| [stackit_key_pair.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/key_pair) | resource |
+| [stackit_network_interface.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network_interface) | resource |
+| [stackit_public_ip.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/public_ip) | resource |
+| [stackit_server.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) | resource |
+| [stackit_server_volume_attach.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_volume_attach) | resource |
 
 ## Inputs
 
-No inputs.
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_machine_type"></a> [machine\_type](#input\_machine\_type) | Name of the machine type (flavor) for the server, e.g. `g2i.1`. See STACKIT machine types documentation. | `string` | n/a | yes |
+| <a name="input_name"></a> [name](#input\_name) | The name of the server. Also used to derive the default key pair name. | `string` | n/a | yes |
+| <a name="input_project_id"></a> [project\_id](#input\_project\_id) | STACKIT project ID in which the server and related resources are created. | `string` | n/a | yes |
+| <a name="input_affinity_group"></a> [affinity\_group](#input\_affinity\_group) | The affinity group ID the server is assigned to. | `string` | `null` | no |
+| <a name="input_attach_volume_ids"></a> [attach\_volume\_ids](#input\_attach\_volume\_ids) | List of existing volume IDs to attach to the server (data volumes, in addition to the boot volume). | `list(string)` | `[]` | no |
+| <a name="input_availability_zone"></a> [availability\_zone](#input\_availability\_zone) | The availability zone of the server, e.g. `eu01-1`. | `string` | `null` | no |
+| <a name="input_boot_volume"></a> [boot\_volume](#input\_boot\_volume) | The boot volume configuration for the server.<br/>  - `source_type` (required) : `image` or `volume`.<br/>  - `source_id`   (required) : image ID (when source\_type = image) or volume ID (when source\_type = volume).<br/>  - `size`                   : boot volume size in GB. Required when `source_type` is `image`.<br/>  - `performance_class`      : performance class of the boot volume.<br/>  - `delete_on_termination`  : delete the volume when the server is terminated. Only allowed when source\_type = image. | <pre>object({<br/>    source_type           = string<br/>    source_id             = string<br/>    size                  = optional(number)<br/>    performance_class     = optional(string)<br/>    delete_on_termination = optional(bool)<br/>  })</pre> | `null` | no |
+| <a name="input_create_key_pair"></a> [create\_key\_pair](#input\_create\_key\_pair) | Whether to create a key pair from `public_key`. If false, provide an existing key pair name via `keypair_name`. | `bool` | `false` | no |
+| <a name="input_create_server"></a> [create\_server](#input\_create\_server) | Whether to create the server and its attached resources (public IPs, volume attachments). Set to false to disable all resources in this module. | `bool` | `true` | no |
+| <a name="input_desired_status"></a> [desired\_status](#input\_desired\_status) | The desired status of the server. Possible values: `active`, `inactive`, `deallocated`. | `string` | `null` | no |
+| <a name="input_image_id"></a> [image\_id](#input\_image\_id) | The image ID to be used for an ephemeral disk on the server. Prefer `boot_volume` for persistent boot disks. | `string` | `null` | no |
+| <a name="input_key_pair_name"></a> [key\_pair\_name](#input\_key\_pair\_name) | Name for the created key pair. Defaults to `<name>-key` when not set. Used only when `create_key_pair` is true. | `string` | `null` | no |
+| <a name="input_keypair_name"></a> [keypair\_name](#input\_keypair\_name) | Name of an existing key pair to use for the server. Ignored when `create_key_pair` is true. | `string` | `null` | no |
+| <a name="input_labels"></a> [labels](#input\_labels) | Key-value string pairs to attach to the server and key pair. | `map(string)` | `{}` | no |
+| <a name="input_network_interface_ids"></a> [network\_interface\_ids](#input\_network\_interface\_ids) | List of PRE-EXISTING network interface IDs to attach to the server. Combined with any interfaces created via `network_interfaces`. | `list(string)` | `null` | no |
+| <a name="input_network_interfaces"></a> [network\_interfaces](#input\_network\_interfaces) | Map of network interfaces to CREATE and attach to the server, keyed by a stable identifier.<br/>Each value:<br/>  - `network_id`         (required) : network ID the interface is attached to.<br/>  - `name`                          : interface name.<br/>  - `security_group_ids`            : list of security group IDs to apply.<br/>  - `allowed_addresses`             : list of CIDRs allowed on the interface.<br/>  - `ipv4`                          : fixed IPv4 address.<br/>  - `security`                      : set false to disable security groups on the interface. | <pre>map(object({<br/>    network_id         = string<br/>    name               = optional(string)<br/>    security_group_ids = optional(list(string))<br/>    allowed_addresses  = optional(list(string))<br/>    ipv4               = optional(string)<br/>    security           = optional(bool)<br/>  }))</pre> | `{}` | no |
+| <a name="input_public_ips"></a> [public\_ips](#input\_public\_ips) | Map of public IPs to create, keyed by a stable identifier. Each value:<br/>  - `network_interface_id` : network interface (or virtual IP) ID to associate the public IP with. Optional (leave unset to reserve a floating IP).<br/>  - `labels`               : key-value labels for the public IP. | <pre>map(object({<br/>    network_interface_id = optional(string)<br/>    labels               = optional(map(string))<br/>  }))</pre> | `{}` | no |
+| <a name="input_public_key"></a> [public\_key](#input\_public\_key) | The public SSH key to upload (e.g. `chomp(file("~/.ssh/id_ed25519.pub"))`). Required when `create_key_pair` is true. | `string` | `null` | no |
+| <a name="input_region"></a> [region](#input\_region) | The resource region. If not defined, the provider region is used. | `string` | `null` | no |
+| <a name="input_user_data"></a> [user\_data](#input\_user\_data) | User data passed via cloud-init to the server (e.g. `file("cloud-init.yaml")` or an inline script). | `string` | `null` | no |
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_keypair_fingerprint"></a> [keypair\_fingerprint](#output\_keypair\_fingerprint) | The fingerprint of the created key pair (null when no key pair is created). |
+| <a name="output_keypair_name"></a> [keypair\_name](#output\_keypair\_name) | The name of the key pair used by the server (created or provided). |
+| <a name="output_network_interface_ids"></a> [network\_interface\_ids](#output\_network\_interface\_ids) | Map of network interface key to created network interface ID. |
+| <a name="output_network_interface_ipv4s"></a> [network\_interface\_ipv4s](#output\_network\_interface\_ipv4s) | Map of network interface key to its IPv4 address. |
+| <a name="output_public_ip_ids"></a> [public\_ip\_ids](#output\_public\_ip\_ids) | Map of public IP key to public IP ID. |
+| <a name="output_public_ips"></a> [public\_ips](#output\_public\_ips) | Map of public IP key to allocated IP address. |
+| <a name="output_server_id"></a> [server\_id](#output\_server\_id) | The ID of the created server (null when create\_server is false). |
+| <a name="output_server_name"></a> [server\_name](#output\_server\_name) | The name of the created server (null when create\_server is false). |
 <!-- END_TF_DOCS -->

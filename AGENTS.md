@@ -7,6 +7,41 @@ This file provides context and instructions for AI coding agents (Copilot, Curso
 This is a Terraform module for [STACKIT](https://www.stackit.de/en/), the cloud platform by Schwarz Group.
 It is part of the [terraform-stackit-modules](https://github.com/terraform-stackit-modules) organization, which aims to provide community-maintained, production-grade Terraform modules for STACKIT.
 
+### This module: compute
+
+Provisions a STACKIT **server (VM)** and its directly-attached resources. Composable with
+`terraform-stackit-network`, `terraform-stackit-security-group` and `terraform-stackit-key-pair`.
+
+**Resources managed**
+- `stackit_server` — the VM (toggled by `create_server`, via `count`).
+- `stackit_network_interface` — 0..N NICs the module creates, via `for_each` over `var.network_interfaces`.
+- `stackit_key_pair` — optional SSH key pair (only when `create_key_pair = true` and `public_key` is set).
+- `stackit_public_ip` — 0..N public IPs, via `for_each` over `var.public_ips`.
+- `stackit_server_volume_attach` — attaches existing data volumes, via `for_each` over `var.attach_volume_ids`.
+
+**Key inputs** — `project_id` (req), `name` (req), `machine_type` (req), `boot_volume`
+(`{source_type, source_id, size?, performance_class?, delete_on_termination?}`),
+`availability_zone`, `image_id`, `user_data` (cloud-init),
+`network_interfaces` (map of NICs to CREATE: `{network_id, name?, security_group_ids?, allowed_addresses?, ipv4?, security?}`),
+`network_interface_ids` (list of PRE-EXISTING NIC IDs),
+`create_key_pair`/`public_key`/`keypair_name`, `public_ips`, `attach_volume_ids`, `labels`.
+
+**Outputs** — `server_id`, `server_name`, `keypair_name`, `keypair_fingerprint`,
+`public_ips` (map key→IP), `public_ip_ids`, `network_interface_ids`, `network_interface_ipv4s`.
+
+**Gotchas**
+- `boot_volume` is a nested single object → assign with `= { ... }`, never `dynamic {}`.
+  `size` is required when `source_type = "image"`.
+- A server needs at least one NIC to be reachable. The server attaches the union of NICs
+  created via `network_interfaces` and IDs passed via `network_interface_ids`.
+- Provide EITHER `create_key_pair`+`public_key` (module creates the key) OR `keypair_name`
+  (reuse an existing key, e.g. from `terraform-stackit-key-pair`); the module wires the
+  server's `keypair_name` accordingly.
+- `examples/basic` is self-contained (requires only `project_id`): it builds the network via
+  the published `terraform-stackit-network` module and generates a throwaway RSA key with the
+  `tls` provider (`trimspace(tls_private_key.this.public_key_openssh)`) — STACKIT rejects a
+  malformed public key at apply, so a real key is required, not a hand-crafted placeholder.
+
 ## Repository structure
 
 ```

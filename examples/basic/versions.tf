@@ -6,5 +6,9 @@ terraform {
       source  = "stackitcloud/stackit"
       version = ">= 0.113.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = ">= 4.0"
+    }
   }
 }
