@@ -1,5 +1,5 @@
 resource "stackit_key_pair" "this" {
-  count = var.create_key_pair && var.public_key != null ? 1 : 0
+  count = var.create_key_pair ? 1 : 0
 
   name       = coalesce(var.key_pair_name, "${var.name}-key")
   public_key = var.public_key
@@ -29,7 +29,7 @@ resource "stackit_server" "this" {
   machine_type      = var.machine_type
   availability_zone = var.availability_zone
   image_id          = var.image_id
-  keypair_name      = var.create_key_pair && var.public_key != null ? stackit_key_pair.this[0].name : var.keypair_name
+  keypair_name      = var.create_key_pair ? stackit_key_pair.this[0].name : var.keypair_name
   user_data         = var.user_data
   desired_status    = var.desired_status
   affinity_group    = var.affinity_group

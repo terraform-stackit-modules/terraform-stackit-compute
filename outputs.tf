@@ -10,12 +10,12 @@ output "server_name" {
 
 output "keypair_name" {
   description = "The name of the key pair used by the server (created or provided)."
-  value       = var.create_key_pair && var.public_key != null ? stackit_key_pair.this[0].name : var.keypair_name
+  value       = var.create_key_pair ? stackit_key_pair.this[0].name : var.keypair_name
 }
 
 output "keypair_fingerprint" {
   description = "The fingerprint of the created key pair (null when no key pair is created)."
-  value       = var.create_key_pair && var.public_key != null ? stackit_key_pair.this[0].fingerprint : null
+  value       = var.create_key_pair ? stackit_key_pair.this[0].fingerprint : null
 }
 
 output "public_ips" {
