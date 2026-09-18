@@ -7,3 +7,8 @@ output "update_enabled" {
   description = "Whether the server update service is enabled."
   value       = module.compute.update_enabled
 }
+
+output "update_schedule_ids" {
+  description = "The update schedule IDs created by the example."
+  value       = module.compute.update_schedule_ids
+}

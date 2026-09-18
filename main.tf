@@ -106,6 +106,20 @@ resource "stackit_server_update_enable" "this" {
   update_policy_id = var.update_policy_id
 }
 
+resource "stackit_server_update_schedule" "this" {
+  for_each = var.create_server && var.enable_update ? var.update_schedules : {}
+
+  project_id         = var.project_id
+  region             = var.region
+  server_id          = stackit_server.this[0].server_id
+  name               = each.value.name
+  rrule              = each.value.rrule
+  enabled            = each.value.enabled
+  maintenance_window = each.value.maintenance_window
+
+  depends_on = [stackit_server_update_enable.this]
+}
+
 # ─── Service account attachments ──────────────────────────────────────────────
 
 resource "stackit_server_service_account_attach" "this" {

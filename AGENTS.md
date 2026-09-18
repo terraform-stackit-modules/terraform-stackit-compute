@@ -22,6 +22,7 @@ Provisions a STACKIT **server (VM)** and its directly-attached resources. Compos
 - `stackit_server_backup_enable` — backup service (only when `enable_backup = true`, via `count`). One per server.
 - `stackit_server_backup_schedule` — 0..N backup schedules, via `for_each` over `var.backup_schedules`; `depends_on` the enable resource.
 - `stackit_server_update_enable` — OS update service (only when `enable_update = true`, via `count`). One per server.
+- `stackit_server_update_schedule` — 0..N maintenance schedules, via `for_each` over `var.update_schedules`; `depends_on` the enable resource.
 - `stackit_server_service_account_attach` — 0..N service-account attachments, via `for_each` over `var.service_accounts` (a **map keyed by a stable id**, value = email).
 
 **Key inputs** — `project_id` (req), `name` (req), `machine_type` (req), `boot_volume`
@@ -31,12 +32,12 @@ Provisions a STACKIT **server (VM)** and its directly-attached resources. Compos
 `network_interface_ids` (list of PRE-EXISTING NIC IDs),
 `create_key_pair`/`public_key`/`keypair_name`, `public_ips`, `attach_volume_ids`, `labels`,
 `enable_backup`/`backup_policy_id`/`backup_schedules` (map: `{name, rrule, enabled?, backup_name, retention_period, volume_ids?}`),
-`enable_update`/`update_policy_id`,
+`enable_update`/`update_policy_id`/`update_schedules` (map: `{name, rrule, enabled?, maintenance_window}`),
 `service_accounts` (map of `{stable_key => service_account_email}`).
 
 **Outputs** — `server_id`, `server_name`, `keypair_name`, `keypair_fingerprint`,
 `public_ips` (map key→IP), `public_ip_ids`, `network_interface_ids`, `network_interface_ipv4s`,
-`backup_enabled`, `backup_schedule_ids` (map key→id), `update_enabled`,
+`backup_enabled`, `backup_schedule_ids` (map key→id), `update_enabled`, `update_schedule_ids` (map key→id),
 `service_account_attachment_ids` (map key→attachment id).
 
 **Gotchas**
@@ -49,7 +50,8 @@ Provisions a STACKIT **server (VM)** and its directly-attached resources. Compos
   server's `keypair_name` accordingly.
 - **Backup**: `backup_schedules` require `enable_backup = true`; the module gates the schedules
   with `depends_on` on `stackit_server_backup_enable`. Only ONE enable resource per server.
-- **Update**: only ONE `stackit_server_update_enable` per server.
+- **Update**: only ONE `stackit_server_update_enable` per server. `update_schedules` require
+  `enable_update = true` (gated via `depends_on`); `maintenance_window` is an hour in `1..24`.
 - **`service_accounts` is a MAP keyed by a stable identifier, NOT `toset(list-of-emails)`.** The
   email of a service account created in the same apply is known-after-apply; a `for_each` over
   `toset([sa.email])` would fail at plan (`Invalid for_each argument`). Keying by a static id

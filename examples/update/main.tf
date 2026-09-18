@@ -66,8 +66,17 @@ module "compute" {
     }
   }
 
-  # Enable the server OS update service.
+  # Enable the server OS update service and schedule a daily maintenance window.
   enable_update = true
+
+  update_schedules = {
+    daily = {
+      name               = "example-daily-update"
+      rrule              = "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1"
+      enabled            = true
+      maintenance_window = 2
+    }
+  }
 
   labels = {
     managed_by = "terraform"

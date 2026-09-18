@@ -53,6 +53,11 @@ output "update_enabled" {
   value       = var.create_server && var.enable_update ? stackit_server_update_enable.this[0].enabled : null
 }
 
+output "update_schedule_ids" {
+  description = "Map of update schedule key to update schedule ID."
+  value       = { for k, s in stackit_server_update_schedule.this : k => s.update_schedule_id }
+}
+
 output "service_account_attachment_ids" {
   description = "Map of service account key to its attachment resource ID."
   value       = { for k, a in stackit_server_service_account_attach.this : k => a.id }

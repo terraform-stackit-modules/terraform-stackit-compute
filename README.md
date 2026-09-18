@@ -76,6 +76,16 @@ See [`examples/backup`](./examples/backup) for a self-contained, Terratest-cover
 ```hcl
 enable_update = true
 # update_policy_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # optional
+
+# Optional maintenance schedules (require enable_update = true):
+update_schedules = {
+  daily = {
+    name               = "app-daily-update"
+    rrule              = "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1"
+    enabled            = true
+    maintenance_window = 2 # hour 1..24; updates start within this hourly window
+  }
+}
 ```
 
 See [`examples/update`](./examples/update) for a self-contained, Terratest-covered example.
@@ -183,6 +193,7 @@ No modules.
 | [stackit_server_backup_schedule.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_backup_schedule) | resource |
 | [stackit_server_service_account_attach.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_service_account_attach) | resource |
 | [stackit_server_update_enable.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_update_enable) | resource |
+| [stackit_server_update_schedule.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_update_schedule) | resource |
 | [stackit_server_volume_attach.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server_volume_attach) | resource |
 
 ## Inputs
@@ -215,6 +226,7 @@ No modules.
 | <a name="input_region"></a> [region](#input\_region) | The resource region. If not defined, the provider region is used. | `string` | `null` | no |
 | <a name="input_service_accounts"></a> [service\_accounts](#input\_service\_accounts) | Map of service accounts to attach to the server, keyed by a STABLE identifier (NOT the email).<br/>Each value is the service account email to attach. Using a static key avoids a for\_each over a<br/>known-after-apply value (e.g. a service account email created in the same apply).<br/>Example: `{ ci = stackit_service_account.ci.email }`. | `map(string)` | `{}` | no |
 | <a name="input_update_policy_id"></a> [update\_policy\_id](#input\_update\_policy\_id) | Optional update policy ID for the server update service. | `string` | `null` | no |
+| <a name="input_update_schedules"></a> [update\_schedules](#input\_update\_schedules) | Map of server update (maintenance) schedules to create, keyed by a stable identifier.<br/>Requires `enable_update = true`. Each value:<br/>  - `name`               : the schedule name.<br/>  - `rrule`              : an RFC 5545 recurrence rule, e.g. "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1".<br/>  - `enabled`            : whether the schedule is enabled (default true).<br/>  - `maintenance_window` : hour of the maintenance window, 1..24. Updates start within this hourly window. | <pre>map(object({<br/>    name               = string<br/>    rrule              = string<br/>    enabled            = optional(bool, true)<br/>    maintenance_window = number<br/>  }))</pre> | `{}` | no |
 | <a name="input_user_data"></a> [user\_data](#input\_user\_data) | User data passed via cloud-init to the server (e.g. `file("cloud-init.yaml")` or an inline script). | `string` | `null` | no |
 
 ## Outputs
@@ -233,4 +245,5 @@ No modules.
 | <a name="output_server_name"></a> [server\_name](#output\_server\_name) | The name of the created server (null when create\_server is false). |
 | <a name="output_service_account_attachment_ids"></a> [service\_account\_attachment\_ids](#output\_service\_account\_attachment\_ids) | Map of service account key to its attachment resource ID. |
 | <a name="output_update_enabled"></a> [update\_enabled](#output\_update\_enabled) | Whether the server update service is enabled (null when not managed by this module). |
+| <a name="output_update_schedule_ids"></a> [update\_schedule\_ids](#output\_update\_schedule\_ids) | Map of update schedule key to update schedule ID. |
 <!-- END_TF_DOCS -->

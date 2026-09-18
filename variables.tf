@@ -237,6 +237,31 @@ variable "update_policy_id" {
   default     = null
 }
 
+variable "update_schedules" {
+  description = <<-EOT
+    Map of server update (maintenance) schedules to create, keyed by a stable identifier.
+    Requires `enable_update = true`. Each value:
+      - `name`               : the schedule name.
+      - `rrule`              : an RFC 5545 recurrence rule, e.g. "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1".
+      - `enabled`            : whether the schedule is enabled (default true).
+      - `maintenance_window` : hour of the maintenance window, 1..24. Updates start within this hourly window.
+  EOT
+  type = map(object({
+    name               = string
+    rrule              = string
+    enabled            = optional(bool, true)
+    maintenance_window = number
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for s in values(var.update_schedules) : s.maintenance_window >= 1 && s.maintenance_window <= 24
+    ])
+    error_message = "Each update_schedules[*].maintenance_window must be between 1 and 24."
+  }
+}
+
 # ─── Service account attachments ──────────────────────────────────────────────
 
 variable "service_accounts" {
