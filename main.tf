@@ -37,6 +37,8 @@ resource "stackit_server" "this" {
 
   boot_volume = var.boot_volume
 
+  agent = var.agent
+
   # Attach NICs created by this module (var.network_interfaces) plus any
   # pre-existing interface IDs passed in via var.network_interface_ids.
   network_interfaces = concat(
@@ -61,4 +63,70 @@ resource "stackit_server_volume_attach" "this" {
   region     = var.region
   server_id  = stackit_server.this[0].server_id
   volume_id  = each.value
+}
+
+# ─── Backup ───────────────────────────────────────────────────────────────────
+
+resource "stackit_server_backup_enable" "this" {
+  count = var.create_server && var.enable_backup ? 1 : 0
+
+  project_id       = var.project_id
+  region           = var.region
+  server_id        = stackit_server.this[0].server_id
+  backup_policy_id = var.backup_policy_id
+}
+
+resource "stackit_server_backup_schedule" "this" {
+  for_each = var.create_server && var.enable_backup ? var.backup_schedules : {}
+
+  project_id = var.project_id
+  region     = var.region
+  server_id  = stackit_server.this[0].server_id
+  name       = each.value.name
+  rrule      = each.value.rrule
+  enabled    = each.value.enabled
+
+  backup_properties = {
+    name             = each.value.backup_name
+    retention_period = each.value.retention_period
+    volume_ids       = each.value.volume_ids
+  }
+
+  depends_on = [stackit_server_backup_enable.this]
+}
+
+# ─── Update ───────────────────────────────────────────────────────────────────
+
+resource "stackit_server_update_enable" "this" {
+  count = var.create_server && var.enable_update ? 1 : 0
+
+  project_id       = var.project_id
+  region           = var.region
+  server_id        = stackit_server.this[0].server_id
+  update_policy_id = var.update_policy_id
+}
+
+resource "stackit_server_update_schedule" "this" {
+  for_each = var.create_server && var.enable_update ? var.update_schedules : {}
+
+  project_id         = var.project_id
+  region             = var.region
+  server_id          = stackit_server.this[0].server_id
+  name               = each.value.name
+  rrule              = each.value.rrule
+  enabled            = each.value.enabled
+  maintenance_window = each.value.maintenance_window
+
+  depends_on = [stackit_server_update_enable.this]
+}
+
+# ─── Service account attachments ──────────────────────────────────────────────
+
+resource "stackit_server_service_account_attach" "this" {
+  for_each = var.create_server ? var.service_accounts : {}
+
+  project_id            = var.project_id
+  region                = var.region
+  server_id             = stackit_server.this[0].server_id
+  service_account_email = each.value
 }

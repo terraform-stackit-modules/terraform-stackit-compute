@@ -70,6 +70,22 @@ variable "affinity_group" {
   default     = null
 }
 
+variable "agent" {
+  description = <<-EOT
+    Optional STACKIT Server Agent configuration.
+      - `provisioning_policy` : `ALWAYS`, `NEVER`, or `INHERIT` (INHERIT follows the image default).
+  EOT
+  type = object({
+    provisioning_policy = optional(string)
+  })
+  default = null
+
+  validation {
+    condition     = try(var.agent.provisioning_policy, null) == null || contains(["ALWAYS", "NEVER", "INHERIT"], try(var.agent.provisioning_policy, ""))
+    error_message = "agent.provisioning_policy must be one of: ALWAYS, NEVER, INHERIT."
+  }
+}
+
 variable "boot_volume" {
   description = <<-EOT
     The boot volume configuration for the server.
@@ -169,4 +185,92 @@ variable "attach_volume_ids" {
   description = "List of existing volume IDs to attach to the server (data volumes, in addition to the boot volume)."
   type        = list(string)
   default     = []
+}
+
+# ─── Backup ───────────────────────────────────────────────────────────────────
+
+variable "enable_backup" {
+  description = "Whether to enable the server backup service (stackit_server_backup_enable). Required before creating backup schedules. Only one enable resource per server."
+  type        = bool
+  default     = false
+}
+
+variable "backup_policy_id" {
+  description = "Optional backup policy ID for the server backup service."
+  type        = string
+  default     = null
+}
+
+variable "backup_schedules" {
+  description = <<-EOT
+    Map of server backup schedules to create, keyed by a stable identifier. Requires `enable_backup = true`.
+    Each value:
+      - `name`             : the schedule name.
+      - `rrule`            : an RFC 5545 recurrence rule, e.g. "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1".
+      - `enabled`          : whether the schedule is enabled (default true).
+      - `backup_name`      : name given to the backups produced by this schedule.
+      - `retention_period` : retention period in days.
+      - `volume_ids`       : optional list of volume IDs to back up (null = all).
+  EOT
+  type = map(object({
+    name             = string
+    rrule            = string
+    enabled          = optional(bool, true)
+    backup_name      = string
+    retention_period = number
+    volume_ids       = optional(list(string))
+  }))
+  default = {}
+}
+
+# ─── Update ───────────────────────────────────────────────────────────────────
+
+variable "enable_update" {
+  description = "Whether to enable the server update service (stackit_server_update_enable). Only one enable resource per server."
+  type        = bool
+  default     = false
+}
+
+variable "update_policy_id" {
+  description = "Optional update policy ID for the server update service."
+  type        = string
+  default     = null
+}
+
+variable "update_schedules" {
+  description = <<-EOT
+    Map of server update (maintenance) schedules to create, keyed by a stable identifier.
+    Requires `enable_update = true`. Each value:
+      - `name`               : the schedule name.
+      - `rrule`              : an RFC 5545 recurrence rule, e.g. "DTSTART;TZID=Europe/Berlin:20200803T023000 RRULE:FREQ=DAILY;INTERVAL=1".
+      - `enabled`            : whether the schedule is enabled (default true).
+      - `maintenance_window` : hour of the maintenance window, 1..24. Updates start within this hourly window.
+  EOT
+  type = map(object({
+    name               = string
+    rrule              = string
+    enabled            = optional(bool, true)
+    maintenance_window = number
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for s in values(var.update_schedules) : s.maintenance_window >= 1 && s.maintenance_window <= 24
+    ])
+    error_message = "Each update_schedules[*].maintenance_window must be between 1 and 24."
+  }
+}
+
+# ─── Service account attachments ──────────────────────────────────────────────
+
+variable "service_accounts" {
+  description = <<-EOT
+    Map of service accounts to attach to the server, keyed by a STABLE identifier (NOT the email).
+    Each value is the service account email to attach. Using a static key avoids a for_each over a
+    known-after-apply value (e.g. a service account email created in the same apply).
+    Example: `{ ci = stackit_service_account.ci.email }`.
+  EOT
+  type        = map(string)
+  default     = {}
 }
