@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0](https://github.com/terraform-stackit-modules/terraform-stackit-compute/compare/v1.0.0...v1.1.0) (2026-09-18)
+
+### Features
+
+* add server backup, server update, server using agent and service-account-attach support to compute ([56caee0](https://github.com/terraform-stackit-modules/terraform-stackit-compute/commit/56caee0f3f2690d647d2eaba047d83f39e2e8421))
+* add server update maintenance schedules to compute ([85471e3](https://github.com/terraform-stackit-modules/terraform-stackit-compute/commit/85471e32e8e7251144e8529e791e977b5a61f9f0))
+
 ## 1.0.0 (2026-09-09)
 
 ### Features
