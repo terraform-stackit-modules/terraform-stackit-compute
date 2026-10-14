@@ -4,6 +4,7 @@
 Terraform module which provisions a [STACKIT server (VM)](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/server) and its directly-attached resources on [STACKIT](https://www.stackit.de/en/): SSH key pair, network interfaces, public IPs, data-volume attachments, the STACKIT Server Agent, the server backup service (enable + schedules), the server update (OS patch) service, and service-account attachments.
 
 [![Terraform Registry](https://img.shields.io/github/v/release/terraform-stackit-modules/terraform-stackit-compute?label=registry&color=7B42BC&logo=terraform&logoColor=white&style=flat)](https://registry.terraform.io/modules/terraform-stackit-modules/compute/stackit/latest)
+[![OpenTofu Registry](https://img.shields.io/badge/OpenTofu-Registry-FF643B?style=flat&logo=opentofu&logoColor=white)](https://registry.opentofu.org/modules/terraform-stackit-modules/compute/stackit/latest)
 [![License](https://img.shields.io/github/license/terraform-stackit-modules/terraform-stackit-compute)](./LICENSE)
 
 This repository is not from the official STACKIT organization.
